@@ -1,7 +1,8 @@
 from datetime import datetime
 from uuid import uuid4
-from fastapi import APIRouter, Body, HTTPException, status
+from fastapi import APIRouter, Body, HTTPException, Query, status
 from pydantic import UUID4
+from operator import or_
 
 from workout_api.atleta.schemas import AtletaGetAll, AtletaIn, AtletaOut, AtletaUpdate
 from workout_api.atleta.models import AtletaModel
@@ -69,9 +70,25 @@ async def post(
     status_code=status.HTTP_200_OK,
     response_model=list[AtletaGetAll],
 )
-async def query(db_session: DatabaseDependency) -> list[AtletaGetAll]:
-    atletas: list[AtletaGetAll] = (await db_session.execute(select(AtletaModel))).scalars().all()
-    
+
+async def query(db_session: DatabaseDependency, nome: str | None = None, cpf: str | None = None) -> list[AtletaGetAll]:
+    if nome or cpf:
+        if nome and cpf:
+            search_query = or_(
+                AtletaModel.nome.like(f"%{nome}%"),
+                AtletaModel.cpf.like(f"%{cpf}%")
+            )
+        elif nome:
+            search_query = AtletaModel.nome.like(f"%{nome}%")
+        elif cpf:
+            search_query = AtletaModel.cpf.like(f"%{cpf}%")
+        else:
+            pass
+
+        atletas: AtletaGetAll = (await db_session.execute(select(AtletaModel).filter(search_query))).scalars().all()
+    else:
+        atletas: list[AtletaGetAll] = (await db_session.execute(select(AtletaModel))).scalars().all() 
+        
     return [AtletaGetAll.model_validate(atleta) for atleta in atletas]
 
 
