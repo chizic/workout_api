@@ -3,6 +3,7 @@ from uuid import uuid4
 from fastapi import APIRouter, Body, HTTPException, Query, status
 from pydantic import UUID4
 from operator import or_
+from fastapi_pagination import LimitOffsetPage, Page, add_pagination, paginate
 
 from workout_api.atleta.schemas import AtletaGetAll, AtletaIn, AtletaOut, AtletaUpdate
 from workout_api.atleta.models import AtletaModel
@@ -77,7 +78,7 @@ async def post(
     '/', 
     summary='Consultar todos os Atletas',
     status_code=status.HTTP_200_OK,
-    response_model=list[AtletaGetAll],
+    response_model=LimitOffsetPage[AtletaGetAll],
 )
 
 async def query(db_session: DatabaseDependency, nome: str | None = None, cpf: str | None = None) -> list[AtletaGetAll]:
@@ -98,7 +99,8 @@ async def query(db_session: DatabaseDependency, nome: str | None = None, cpf: st
     else:
         atletas: list[AtletaGetAll] = (await db_session.execute(select(AtletaModel))).scalars().all() 
         
-    return [AtletaGetAll.model_validate(atleta) for atleta in atletas]
+    #return [AtletaGetAll.model_validate(atleta) for atleta in atletas]
+    return paginate(atletas)
 
 
 @router.get(
